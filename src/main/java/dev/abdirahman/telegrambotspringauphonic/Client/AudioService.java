@@ -36,10 +36,15 @@ public class AudioService {
 
         MultiValueMap<String, Object> multipartData = createMultiform(resource.getFilename(), resource);
 
-        //AuphonicResponse auphonicResponse = auphonicPostRequest(multipartData, restClient);
+        //here i try to upload
+        AuphonicResponse auphonicResponse = auphonicPostRequest(multipartData, restClient, "/simple/productions.json");
+        System.out.println("Auphonic Response: " + auphonicResponse.data().uuid());
+        System.out.println("hej");
+
+        AuphonicResponse auphonicResponse2 = waitForProduction(auphonicResponse.data().uuid(), restClient);
 
 
-        AuphonicResponse auphonicResponse2 = restClient.get()
+        AuphonicResponse auphonicResponse3 = restClient.get()
                 .uri("/production/jHnaabHp5sT2LMDGxS437R.json")
                 .header("Authorization","bearer " + apiKey)
                 .retrieve()
@@ -162,6 +167,36 @@ public class AudioService {
                 return title;
             }
         };
+    }
+
+    private AuphonicResponse waitForProduction(
+            String uuid,
+            RestClient restClient) throws InterruptedException {
+
+        for (int i = 0; i < 120; i++) {
+
+            AuphonicResponse response = restClient.get()
+                    .uri("/production/" + uuid + ".json")
+                    .header("Authorization", "bearer " + apiKey)
+                    .retrieve()
+                    .body(AuphonicResponse.class);
+
+            System.out.println(
+                    "Auphonic status: " + response.data().status()
+            );
+
+            // Production finished
+            if (response.data().status() == 3) {
+                return response;
+            }
+
+            // Wait 5 seconds before checking again
+            Thread.sleep(5000);
+        }
+
+        throw new RuntimeException(
+                "Timed out waiting for Auphonic production: " + uuid
+        );
     }
 
 }
